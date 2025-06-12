@@ -147,8 +147,7 @@ def export_evaluations_csv(db: Session = Depends(get_db)):
         # Header row
         writer.writerow([
             "user_id", "translation_id",
-            "adequacy", "fluency", "comment",
-            "adequacy_xp", "fluency_xp", "total_xp", "percentage",
+            "adequacy", "fluency",
             "timestamp"
         ])
 
@@ -159,11 +158,6 @@ def export_evaluations_csv(db: Session = Depends(get_db)):
                 e.chosen_id,
                 getattr(e, "adequacy", ""),
                 getattr(e, "fluency", ""),
-                getattr(e, "comment", ""),
-                getattr(e, "adequacy_xp", ""),
-                getattr(e, "fluency_xp", ""),
-                getattr(e, "total_xp", ""),
-                getattr(e, "percentage", ""),
                 e.timestamp.isoformat() if e.timestamp else ""
             ])
 
