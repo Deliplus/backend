@@ -1,7 +1,7 @@
 import requests
 
 # replace with key from https://openrouter.ai/
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 MODEL = "mistralai/mistral-7b-instruct"
 
 def mistral_translate(source_text: str) -> str:
