@@ -12,7 +12,7 @@ def mistral_translate(source_text):
     payload = {
         "model": "mistralai/mixtral-8x7b-instruct",  # ✅ Updated model ID
         "messages": [
-            {"role": "system", "content": "You are a professional translator. Translate the following sentence into Catalan."},
+            {"role": "system", "content": "You are a professional translator. Translate the following sentence into Catalan.ONLY RETURN CATALAN TRANSLATION, NO EXPLANATION"},
             {"role": "user", "content": source_text}
         ]
     }
