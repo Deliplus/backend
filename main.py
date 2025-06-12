@@ -259,7 +259,7 @@ async def submit_translation_duel(request: Request):
 
 @app.get("/translation-duel")
 def get_translation_duel():
-    DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "datasets", "en_ca_translations.json")
+    DATASET_PATH = os.path.join(os.path.dirname(__file__), "en_ca_translations.json")
 
     # Load dataset
     with open(DATASET_PATH, encoding="utf-8") as f:
