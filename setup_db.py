@@ -1,8 +1,8 @@
-# setup_db.py
+# init_db.py
 
 from db import Base, engine
-from models.evaluation import Evaluation  # absolute import
-from db import engine
+from models import user_progress, evaluation
 
+print("🔧 Creating database tables...")
 Base.metadata.create_all(bind=engine)
-print("✅ Tables created.")
+print("✅ Done.")
