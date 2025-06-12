@@ -101,6 +101,13 @@ def evaluate_translation(data: EvaluationInput, db: Session = Depends(get_db)):
     db.commit()
 
     return {"result": result}
+
+#----------- debug route for eval---------
+@app.get("/admin/check-evals")
+def check_evals(db: Session = Depends(get_db)):
+    count = db.query(Evaluation).count()
+    return {"message": f"Evaluation rows in DB: {count}"}
+
 # --------- Get Translations Endpoint ---------
 @app.get("/data/translations")
 def get_translations():
