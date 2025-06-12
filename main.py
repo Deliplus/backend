@@ -133,43 +133,49 @@ def get_all_evaluations(db: Session = Depends(get_db)):
 
     return JSONResponse(content=result)
 
+from fastapi.responses import StreamingResponse
+
 @app.get("/admin/export/csv")
 def export_evaluations_csv(db: Session = Depends(get_db)):
-    evaluations = db.query(Evaluation).all()
+    try:
+        evaluations = db.query(Evaluation).all()
 
-    # Create in-memory CSV file
-    output = io.StringIO()
-    writer = csv.writer(output)
+        # Create in-memory CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
 
-    # Header
-    writer.writerow([
-        "user_id", "translation_id",
-        "adequacy", "fluency", "comment",
-        "adequacy_xp", "fluency_xp", "total_xp", "percentage",
-        "timestamp"
-    ])
-
-    # Rows
-    for e in evaluations:
+        # Header row
         writer.writerow([
-            e.user_id,
-            e.translation_id,
-            e.adequacy,
-            e.fluency,
-            e.comment,
-            e.adequacy_xp,
-            e.fluency_xp,
-            e.total_xp,
-            e.percentage,
-            e.timestamp.isoformat()
+            "user_id", "translation_id",
+            "adequacy", "fluency", "comment",
+            "adequacy_xp", "fluency_xp", "total_xp", "percentage",
+            "timestamp"
         ])
 
-    output.seek(0)
-    return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=evaluations.csv"}
-    )
+        # Data rows
+        for e in evaluations:
+            writer.writerow([
+                e.user_id,
+                e.chosen_id,
+                getattr(e, "adequacy", ""),
+                getattr(e, "fluency", ""),
+                getattr(e, "comment", ""),
+                getattr(e, "adequacy_xp", ""),
+                getattr(e, "fluency_xp", ""),
+                getattr(e, "total_xp", ""),
+                getattr(e, "percentage", ""),
+                e.timestamp.isoformat() if e.timestamp else ""
+            ])
+
+        output.seek(0)
+        return StreamingResponse(
+            output,
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=evaluations.csv"}
+        )
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 # --------- Admin: Generate Reference Scores ---------
 @app.get("/admin/generate-reference-scores")
