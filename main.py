@@ -287,42 +287,48 @@ async def submit_evaluation(request: Request):
     data = await request.json()
     db = SessionLocal()
 
-    # Load expert scores (if available)
-    expert_scores_path = os.path.join(os.path.dirname(__file__), "..", "datasets", "expert_scores.json")
-    if os.path.exists(expert_scores_path):
-        with open(expert_scores_path, "r", encoding="utf-8") as f:
-            expert_scores = json.load(f)
-    else:
-        expert_scores = {}
+    # Calculate XP (same logic as /evaluate)
+    adequacy = data.get("adequacy", 0)
+    fluency = data.get("fluency", 0)
 
-    chosen_id = data["chosen_id"]
-    user_score = {"adequacy": data.get("adequacy", 0), "fluency": data.get("fluency", 0)}
+    # Bonus XP logic: 1 to 5 stars = 0 to 10 XP each
+    adequacy_xp = adequacy * 2  # e.g., 4 stars → 8 XP
+    fluency_xp = fluency * 2
 
-    if chosen_id in expert_scores:
-        expert_score = expert_scores[chosen_id]
-    else:
-        # If no baseline, use 100% match (award max XP)
-        expert_score = user_score
+    total_xp = adequacy_xp + fluency_xp
 
-    result = scoring.compare_scores(user_score, expert_score, translation_id=chosen_id)
-
-    # Save evaluation to DB
+    # Save to database
     evaluation = Evaluation(
         user_id=data["user_id"],
         source_text=data["source"],
-        chosen_id=chosen_id,
-        adequacy=user_score["adequacy"],
-        fluency=user_score["fluency"],
+        chosen_id=data["chosen_id"],
+        adequacy=adequacy,
+        fluency=fluency,
     )
+
     db.add(evaluation)
+
+    # Update XP table
+    user = db.query(UserProgress).filter_by(user_id=data["user_id"]).first()
+    if user:
+        user.xp += total_xp
+        user.level = (user.xp // 100) + 1
+    else:
+        user = UserProgress(
+            user_id=data["user_id"],
+            xp=total_xp,
+            level=(total_xp // 100) + 1
+        )
+        db.add(user)
+
     db.commit()
     db.close()
 
     return {
         "status": "ok",
-        "bonus": result["total"],
-        "adequacy_xp": result["adequacy"]["xp"],
-        "fluency_xp": result["fluency"]["xp"]
+        "adequacy_xp": adequacy_xp,
+        "fluency_xp": fluency_xp,
+        "total": total_xp,
     }
 
 @app.get("/admin/generate-reference-scores")
