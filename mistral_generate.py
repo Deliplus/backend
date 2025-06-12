@@ -1,9 +1,9 @@
 import requests
-
+import os
 # replace with key from https://openrouter.ai/
-OPENROUTER_API_KEY = "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"
-MODEL = "mistralai/mistral-7b-instruct"
-
+#OPENROUTER_API_KEY = "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"
+#MODEL = "mistralai/mistral-7b-instruct"
+api_key = os.getenv("OPENROUTER_API_KEY")
 def mistral_translate(source_text: str) -> str:
     prompt = f"[ONLY RETURN CATALAN TRANSLATION, NO EXPLANATION]\nTranslate to CATALAN:\n{source_text}"
 
