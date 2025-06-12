@@ -31,7 +31,7 @@ app = FastAPI(title="Translation Evaluation API")
 # Allow frontend from Vite dev server
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173","https://frontend-five-lime-38.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
