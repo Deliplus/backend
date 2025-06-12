@@ -57,6 +57,12 @@ class EvaluationOutput(BaseModel):
     result: Dict
 
 # --------- Evaluation Endpoint ---------
+@app.get("/admin/init-db")
+def init_db_endpoint():
+    from db import Base, engine
+    Base.metadata.create_all(bind=engine)
+    return {"status": "✅ Tables initialized"}
+
 @app.post("/evaluate", response_model=EvaluationOutput)
 def evaluate_translation(data: EvaluationInput, db: Session = Depends(get_db)):
     result = scoring.compare_scores(data.user, data.expert, data.translation_id)
