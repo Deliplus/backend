@@ -128,6 +128,7 @@ def get_all_evaluations(db: Session = Depends(get_db)):
             "chosen_id": e.chosen_id,
             "adequacy": e.adequacy,
             "fluency": e.fluency,
+            "was_correct": getattr(e, "was_correct", None),
             "timestamp": e.timestamp.isoformat()
         })
 
