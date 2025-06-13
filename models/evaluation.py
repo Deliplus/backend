@@ -1,17 +1,16 @@
 # backend/models/evaluation.py
-
-from sqlalchemy import Column, Integer, String, DateTime, Text
+from sqlalchemy import Column, String, Integer, DateTime, Boolean
 from datetime import datetime
 from db import Base
 
-
 class Evaluation(Base):
-    __tablename__ = "evaluations"
-
+    __tablename__ = "evaluation"
+    
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, nullable=False)
-    source_text = Column(Text, nullable=False)
-    chosen_id = Column(String, nullable=False)
-    adequacy = Column(Integer)
-    fluency = Column(Integer)
+    user_id = Column(String, index=True)
+    source_text = Column(String)
+    chosen_id = Column(String)
+    adequacy = Column(Integer, nullable=True)
+    fluency = Column(Integer, nullable=True)
+    was_correct = Column(Boolean, default=None)  # NEW
     timestamp = Column(DateTime, default=datetime.utcnow)
