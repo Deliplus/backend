@@ -306,56 +306,48 @@ async def submit_evaluation(request: Request):
     data = await request.json()
     db = SessionLocal()
 
-    try:
-        # Extract data
-        user_id = data.get("user_id")
-        source = data.get("source")
-        chosen_id = data.get("chosen_id")
-        adequacy = data.get("adequacy", 0)
-        fluency = data.get("fluency", 0)
+    adequacy = data.get("adequacy", 0)
+    fluency = data.get("fluency", 0)
 
-        # Compute XP
-        adequacy_xp = adequacy * 2
-        fluency_xp = fluency * 2
-        total_xp = adequacy_xp + fluency_xp
+    adequacy_xp = adequacy * 2
+    fluency_xp = fluency * 2
+    total_xp = adequacy_xp + fluency_xp
 
-        # Save evaluation
-        evaluation = Evaluation(
-            user_id=user_id,
-            source_text=source,
-            chosen_id=chosen_id,
-            adequacy=adequacy,
-            fluency=fluency
+    # Determine if the answer was correct
+    correct_id = data["chosen_id"].endswith("_human")
+    was_correct = correct_id
+
+    evaluation = Evaluation(
+        user_id=data["user_id"],
+        source_text=data["source"],
+        chosen_id=data["chosen_id"],
+        adequacy=adequacy,
+        fluency=fluency,
+        was_correct=was_correct,  # NEW
+    )
+    db.add(evaluation)
+
+    user = db.query(UserProgress).filter_by(user_id=data["user_id"]).first()
+    if user:
+        user.xp += total_xp
+        user.level = (user.xp // 100) + 1
+    else:
+        user = UserProgress(
+            user_id=data["user_id"],
+            xp=total_xp,
+            level=(total_xp // 100) + 1
         )
-        db.add(evaluation)
+        db.add(user)
 
-        # Update or insert user progress
-        user = db.query(UserProgress).filter_by(user_id=user_id).first()
-        if user:
-            user.xp += total_xp
-            user.level = (user.xp // 100) + 1
-        else:
-            user = UserProgress(
-                user_id=user_id,
-                xp=total_xp,
-                level=(total_xp // 100) + 1
-            )
-            db.add(user)
+    db.commit()
+    db.close()
 
-        db.commit()
-
-        return {
-            "status": "ok",
-            "adequacy_xp": adequacy_xp,
-            "fluency_xp": fluency_xp,
-            "total": total_xp
-        }
-
-    except Exception as e:
-        db.rollback()
-        return JSONResponse(status_code=500, content={"error": str(e)})
-    finally:
-        db.close()
+    return {
+        "status": "ok",
+        "adequacy_xp": adequacy_xp,
+        "fluency_xp": fluency_xp,
+        "total": total_xp,
+    }
 
 
 @app.get("/admin/generate-reference-scores")
