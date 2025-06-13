@@ -204,78 +204,81 @@ def generate_reference_scores(db: Session = Depends(get_db)):
         json.dump(output, f, indent=2, ensure_ascii=False)
 
     return JSONResponse(content={"message": f"✅ Saved {len(output)} expert scores."})
+
 @app.post("/translation-duel/submit")
 async def submit_translation_duel(request: Request):
+    """
+    Save user feedback (adequacy, fluency) for both correct and incorrect answers.
+    """
     data = await request.json()
     db = SessionLocal()
 
-    try:
-        user_id = data.get("user_id")
-        source = data.get("source")
-        chosen_id = data.get("chosen_id")
-        adequacy = data.get("adequacy", 0)
-        fluency = data.get("fluency", 0)
+    user_id = data.get("user_id")
+    source = data.get("source")
+    chosen_id = data.get("chosen_id")
+    adequacy = data.get("adequacy")
+    fluency = data.get("fluency")
+    correct_id = data.get("correct_id")  # <-- required for correctness check
 
-        # Default: full bonus if no reference
-        bonus_adequacy = 5
-        bonus_fluency = 5
+    was_correct = chosen_id == correct_id
 
-        # Load expert consensus if available
-        reference_path = os.path.join("datasets", "expert_scores.json")
-        if os.path.exists(reference_path):
-            with open(reference_path, "r", encoding="utf-8") as f:
-                consensus = json.load(f)
-            baseline = consensus.get(chosen_id)
+    # Load expert consensus if exists
+    reference_path = os.path.join("datasets", "expert_scores.json")
+    baseline = None
+    if os.path.exists(reference_path):
+        with open(reference_path, "r", encoding="utf-8") as f:
+            consensus = json.load(f)
+        baseline = consensus.get(chosen_id)
 
-            if baseline:
-                diff_adequacy = abs(baseline["adequacy"] - adequacy)
-                diff_fluency = abs(baseline["fluency"] - fluency)
-                bonus_adequacy = max(5 - diff_adequacy, 0)
-                bonus_fluency = max(5 - diff_fluency, 0)
-
-        total_bonus = int(bonus_adequacy + bonus_fluency)
-
-        # Save evaluation
-        evaluation = Evaluation(
-            user_id=user_id,
-            source_text=source,
-            chosen_id=chosen_id,
-            adequacy=adequacy,
-            fluency=fluency
-        )
-        db.add(evaluation)
-
-        # Update user progress
-        user = db.query(UserProgress).filter_by(user_id=user_id).first()
-        if user:
-            user.xp += total_bonus
-            user.level = (user.xp // 100) + 1
+    if was_correct:
+        if baseline:
+            diff_adequacy = abs(baseline["adequacy"] - adequacy)
+            diff_fluency = abs(baseline["fluency"] - fluency)
+            bonus_adequacy = max(5 - diff_adequacy, 0)
+            bonus_fluency = max(5 - diff_fluency, 0)
         else:
-            user = UserProgress(
-                user_id=user_id,
-                xp=total_bonus,
-                level=(total_bonus // 100) + 1
-            )
-            db.add(user)
+            bonus_adequacy = 5
+            bonus_fluency = 5
+    else:
+        bonus_adequacy = 0
+        bonus_fluency = 0
 
-        db.commit()
+    total_bonus = bonus_adequacy + bonus_fluency
 
-        return {
-            "status": "ok",
-            "bonus": {
-                "adequacy_xp": int(bonus_adequacy),
-                "fluency_xp": int(bonus_fluency),
-                "total": total_bonus
-            }
+    # Save to DB regardless of correctness
+    evaluation = Evaluation(
+        user_id=user_id,
+        source_text=source,
+        chosen_id=chosen_id,
+        adequacy=adequacy,
+        fluency=fluency,
+        was_correct=was_correct,
+    )
+    db.add(evaluation)
+
+    # Update XP only if any bonus
+    user = db.query(UserProgress).filter_by(user_id=user_id).first()
+    if user:
+        user.xp += total_bonus
+        user.level = (user.xp // 100) + 1
+    else:
+        user = UserProgress(
+            user_id=user_id,
+            xp=total_bonus,
+            level=(total_bonus // 100) + 1
+        )
+        db.add(user)
+
+    db.commit()
+    db.close()
+
+    return {
+        "bonus": {
+            "adequacy": bonus_adequacy,
+            "fluency": bonus_fluency,
+            "total": total_bonus,
         }
-
-    except Exception as e:
-        db.rollback()
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-    finally:
-        db.close()
-
+    }
 
 @app.get("/translation-duel")
 def get_translation_duel():
