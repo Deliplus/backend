@@ -319,8 +319,9 @@ async def submit_evaluation(request: Request):
     total_xp = adequacy_xp + fluency_xp
 
     # Determine if the answer was correct
-    correct_id = data["chosen_id"].endswith("_human")
-    was_correct = correct_id
+    chosen_id = data.get("chosen_id")
+    is_human = "_human" in chosen_id
+    was_correct = is_human
 
     evaluation = Evaluation(
         user_id=data["user_id"],
