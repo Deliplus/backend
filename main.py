@@ -156,7 +156,7 @@ def export_evaluations_csv(db: Session = Depends(get_db)):
             writer.writerow([
                 e.user_id,
                 e.chosen_id,
-                e.was_correct,
+                getattr(e, "was_correct", ""),
                 getattr(e, "adequacy", ""),
                 getattr(e, "fluency", ""),
                 e.timestamp.isoformat() if e.timestamp else ""
