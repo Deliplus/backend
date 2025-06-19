@@ -290,7 +290,10 @@ def get_translation_duel():
         dataset = json.load(f)
 
     # Pick a random entry
-    pair = random.choice(dataset)
+    # Filter only full-sentence pairs (heuristic: ends with . or ? or !)
+    valid_pairs = [p for p in dataset if p["source"].strip().endswith(('.', '?', '!')) and p["target"].strip().endswith(('.', '?', '!'))]
+    pair = random.choice(valid_pairs)
+
 
     mistral_output = mistral_translate(pair["source"])
 
