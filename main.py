@@ -306,7 +306,7 @@ def get_translation_duel():
     return {
         "source": pair["source"],
         "options": options,
-        "correct_id": human_option["id"]  # ✅ Send the correct one explicitly
+        "correct_id": human_option["id"]  # Send the correct one explicitly
     }
 
 @app.post("/submit-evaluation")
@@ -317,25 +317,35 @@ async def submit_evaluation(request: Request):
     adequacy = data.get("adequacy", 0)
     fluency = data.get("fluency", 0)
 
-    adequacy_xp = adequacy * 2
-    fluency_xp = fluency * 2
-    total_xp = adequacy_xp + fluency_xp
-
-    # Determine if the answer was correct
     chosen_id = data.get("chosen_id")
     is_human = "_human" in chosen_id
-    was_correct = is_human
+    was_correct = is_human  # Determines if player selected the human translation
 
+    # Add a flat bonus if the user was incorrect
+    flat_bonus = 5 if not was_correct else 0
+
+    # Adjust XP calculation based on correctness
+    if was_correct:
+        adequacy_xp = adequacy * 2
+        fluency_xp = fluency * 2
+    else:
+        adequacy_xp = 0
+        fluency_xp = 0
+
+    total_xp = adequacy_xp + fluency_xp + flat_bonus  
+
+    # Save the evaluation regardless of correctness
     evaluation = Evaluation(
         user_id=data["user_id"],
         source_text=data["source"],
-        chosen_id=data["chosen_id"],
+        chosen_id=chosen_id,
         adequacy=adequacy,
         fluency=fluency,
-        was_correct=was_correct,  # NEW
+        was_correct=was_correct,
     )
     db.add(evaluation)
 
+    # Update or create user progress
     user = db.query(UserProgress).filter_by(user_id=data["user_id"]).first()
     if user:
         user.xp += total_xp
@@ -355,7 +365,9 @@ async def submit_evaluation(request: Request):
         "status": "ok",
         "adequacy_xp": adequacy_xp,
         "fluency_xp": fluency_xp,
+        "bonus": flat_bonus,           
         "total": total_xp,
+        "was_correct": was_correct     
     }
 
 
